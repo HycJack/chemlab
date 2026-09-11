@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0000": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "ChemLab",
+			"FileDescription": "初中化学交互教学资源平台",
+			"LegalCopyright": "© 2026, Your Company",
+			"ProductName": "初中化学·教学助手",
+			"Comments": "PEP 九年级化学交互教学资源"
+		}
+	}
+}

@@ -1,0 +1,44 @@
+# Binaries
+bin/
+*.exe
+*.syso
+*.dll
+*.dylib
+*.so
+
+# Build artifacts
+frontend/dist/
+frontend/bindings/
+
+# Dependencies
+frontend/node_modules/
+
+# Task cache
+.task/
+
+# Mobile generated (per-machine; overlays hold absolute paths)
+build/ios/xcode/overlay.json
+build/ios/xcode/gen/
+build/android/overlay.json
+build/android/gen/
+
+# Windows packaging
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+
+# Linux packaging
+build/linux/appimage/build
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.part
+*.tmp
