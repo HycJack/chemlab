@@ -34,9 +34,10 @@ const (
 )
 
 var (
-	mu    sync.Mutex
-	std   *slog.Logger
-	level slog.Level
+	mu      sync.Mutex
+	std     *slog.Logger
+	level   slog.Level
+	rotator *rotatingWriter
 )
 
 func init() {
@@ -63,7 +64,7 @@ func Init(dataDir, levelStr string) error {
 	}
 
 	logFile := filepath.Join(logDir, "app.log")
-	rotator := &rotatingWriter{
+	rotator = &rotatingWriter{
 		filename:   logFile,
 		maxSize:    MaxSize,
 		maxBackups: MaxBackups,
@@ -91,6 +92,16 @@ func Default() *slog.Logger {
 	mu.Lock()
 	defer mu.Unlock()
 	return std
+}
+
+// Close flushes and closes the underlying log file. Call once at shutdown
+// (e.g. after app.Run returns). Safe to call multiple times or before Init.
+func Close() {
+	mu.Lock()
+	defer mu.Unlock()
+	if rotator != nil {
+		_ = rotator.Close()
+	}
 }
 
 // Debug logs at DEBUG level.
@@ -122,13 +133,13 @@ func parseLevel(s string) slog.Level {
 // file exceeds maxBytes, it is renamed with a timestamp suffix and a new
 // file is opened. Old files beyond maxBackups or maxAge days are removed.
 type rotatingWriter struct {
-	mu         sync.Mutex
-	filename   string
-	f          *os.File
+	mu          sync.Mutex
+	filename    string
+	f           *os.File
 	currentSize int64
-	maxSize    int
-	maxBackups int
-	maxAge     int
+	maxSize     int
+	maxBackups  int
+	maxAge      int
 }
 
 func (w *rotatingWriter) Write(p []byte) (int, error) {
@@ -260,16 +271,40 @@ func LogPath(dataDir string) string {
 	return filepath.Join(dataDir, "logs", "app.log")
 }
 
+// maxTailRead caps how much of the log file ReadRecent loads into memory.
+const maxTailRead = 64 * 1024
+
 // ReadRecent returns the last n lines of the current log file. dataDir is
-// the app data root passed to Init.
+// the app data root passed to Init. Only the tail of the file (capped at
+// maxTailRead bytes) is read, so the call stays cheap even for large logs.
 func ReadRecent(dataDir string, n int) (string, error) {
-	data, err := os.ReadFile(LogPath(dataDir))
+	f, err := os.Open(LogPath(dataDir))
 	if err != nil {
 		return "", err
 	}
-	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	defer f.Close()
+
+	st, err := f.Stat()
+	if err != nil {
+		return "", err
+	}
+	offset := st.Size() - maxTailRead
+	truncated := offset > 0
+	if offset < 0 {
+		offset = 0
+	}
+	buf := make([]byte, st.Size()-offset)
+	if _, err := f.ReadAt(buf, offset); err != nil && err != io.EOF {
+		return "", err
+	}
+
+	lines := strings.Split(strings.TrimRight(string(buf), "\n"), "\n")
+	// Drop the (likely partial) first line when we seeked into the middle.
+	if truncated && len(lines) > 0 {
+		lines = lines[1:]
+	}
 	if len(lines) <= n {
-		return string(data), nil
+		return strings.Join(lines, "\n"), nil
 	}
 	return strings.Join(lines[len(lines)-n:], "\n"), nil
 }

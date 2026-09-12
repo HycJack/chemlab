@@ -33,7 +33,6 @@ func TestSettingsService_SaveLoadRoundTrip(t *testing.T) {
 		Theme:         "dark",
 		ThemeID:       "dracula",
 		ZoomLevel:     1.25,
-		ShowHidden:    true,
 		LaunchAtLogin: true,
 	}
 	if err := s.SavePrefs(in); err != nil {
@@ -88,8 +87,5 @@ func TestSettingsService_LoadFillsMissingFields(t *testing.T) {
 	}
 	if got.ZoomLevel != DefaultPreferences.ZoomLevel {
 		t.Fatalf("expected default zoom, got %v", got.ZoomLevel)
-	}
-	if got.ShowHidden != DefaultPreferences.ShowHidden {
-		t.Fatalf("expected default showHidden, got %v", got.ShowHidden)
 	}
 }

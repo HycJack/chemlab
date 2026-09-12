@@ -5,11 +5,17 @@ export * from "./molecules";
 export * from "./reactions";
 export * from "./textbook";
 
-/** 各模块数据量（用于侧边栏徽标，与真实数据一致） */
+import { ELEMENTS } from "./elements";
+import { INSTRUMENTS } from "./instruments";
+import { MOLECULES } from "./molecules";
+import { REACTIONS } from "./reactions";
+import { REAGENTS } from "./reagents";
+
+/** 各模块数据量（用于侧边栏徽标），直接取真实数据长度避免漂移 */
 export const MODULE_COUNTS = {
-  instruments: 26,
-  reagents: 36,
-  molecules: 25,
-  elements: 118,
-  reactions: 42,
+  instruments: INSTRUMENTS.length,
+  reagents: REAGENTS.length,
+  molecules: MOLECULES.length,
+  elements: ELEMENTS.length,
+  reactions: REACTIONS.length,
 } as const;

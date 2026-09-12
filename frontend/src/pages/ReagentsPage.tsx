@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Box, Droplets, Wind } from "lucide-react";
 import { REAGENTS, type Reagent } from "@/modules/data";
 import { ThreeViewport } from "@/modules/three/ThreeViewport";
@@ -103,17 +103,22 @@ function ReagentDetail({
   viewState: ViewState;
   onViewState: (s: ViewState) => void;
 }) {
+  // buildReagentScene 的气体/气泡粒子动画：viewport 每帧回调时驱动。
+  const animatorRef = useRef<((t: number, dt: number) => void) | null>(null);
   return (
     <div className="space-y-4 p-1 pl-5">
       <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-card/70 to-muted/30 p-1">
         <div className="relative h-[290px] overflow-hidden rounded-xl">
           <ThreeViewport
-            key={viewState}
+            key={`${reagent.id}-${viewState}`}
             className="h-full w-full"
             cameraPos={[2.8, 1.9, 3.4]}
             build={({ group }) => {
-              group.add(buildReagentScene(reagent, viewState).group);
+              const s = buildReagentScene(reagent, viewState);
+              group.add(s.group);
+              animatorRef.current = s.animate;
             }}
+            animate={(_, t, dt) => animatorRef.current?.(t, dt)}
           />
           <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2">
             <TagChip color="#10b981">REALISTIC STATE</TagChip>

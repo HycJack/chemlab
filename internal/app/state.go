@@ -3,16 +3,10 @@
 //
 // Pattern: a single State struct is shared by every service. It owns the
 // *application.App and the main window so services can emit events and show /
-// hide / focus the window from background tasks.
+// focus the window from background tasks.
 package app
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"sync"
-
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"chemlab/internal/config"
@@ -20,7 +14,6 @@ import (
 
 // State holds the shared application resources used by the services.
 type State struct {
-	mu         sync.Mutex
 	cfg        *config.Config
 	app        *application.App
 	mainWindow *application.WebviewWindow
@@ -46,13 +39,6 @@ func (s *State) ShowMainWindow() {
 	}
 }
 
-// HideMainWindow hides the main window (e.g. during a screen capture).
-func (s *State) HideMainWindow() {
-	if s.mainWindow != nil {
-		s.mainWindow.Hide()
-	}
-}
-
 // MainWindow returns the main window (may be nil).
 func (s *State) MainWindow() *application.WebviewWindow { return s.mainWindow }
 
@@ -66,25 +52,3 @@ func (s *State) Emit(name string, data any) {
 
 // Config returns the shared application config.
 func (s *State) Config() *config.Config { return s.cfg }
-
-// SaveConfig persists the current configuration.
-func (s *State) SaveConfig() error { return s.cfg.Save(config.DefaultPath()) }
-
-// OpenFolder opens a directory in the platform file manager.
-func (s *State) OpenFolder(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		return err
-	}
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", path)
-	case "windows":
-		cmd = exec.Command("explorer", path)
-	default:
-		cmd = exec.Command("xdg-open", path)
-	}
-	return cmd.Start()
-}
-
-var _ = filepath.Join

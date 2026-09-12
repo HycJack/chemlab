@@ -18,8 +18,6 @@ type Preferences struct {
 	ThemeID string `json:"themeId"`
 	// UI zoom level, e.g. 1.0 === 100%.
 	ZoomLevel float64 `json:"zoomLevel"`
-	// Show dot-prefixed files in the (future) file explorer.
-	ShowHidden bool `json:"showHidden"`
 	// Open automatically at login.
 	LaunchAtLogin bool `json:"launchAtLogin"`
 }
@@ -27,9 +25,8 @@ type Preferences struct {
 // DefaultPreferences is the zero-value preferences used when no file exists yet.
 var DefaultPreferences = Preferences{
 	Theme:         "system",
-	ThemeID:       "claude",
+	ThemeID:       "chem-lab",
 	ZoomLevel:     1,
-	ShowHidden:    false,
 	LaunchAtLogin: false,
 }
 

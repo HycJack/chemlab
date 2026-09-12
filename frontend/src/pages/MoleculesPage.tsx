@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Orbit } from "lucide-react";
 import { MOLECULES, type Molecule } from "@/modules/data";
 import { ThreeViewport } from "@/modules/three/ThreeViewport";
@@ -98,19 +98,22 @@ function MoleculeDetail({
   motion: Motion;
   onMotion: (m: Motion) => void;
 }) {
+  // buildMoleculeScene 的三态振动动画：viewport 每帧回调时驱动。
+  const animatorRef = useRef<((t: number, dt: number) => void) | null>(null);
   return (
     <div className="space-y-4 p-1 pl-5">
       <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-card/70 to-muted/30 p-1">
         <div className="relative h-[300px] overflow-hidden rounded-xl">
           <ThreeViewport
-            key={motion}
+            key={`${molecule.id}-${motion}`}
             className="h-full w-full"
             cameraPos={[3.4, 2.0, 3.6]}
             build={({ group }) => {
               const s = buildMoleculeScene(molecule, motion);
               group.add(s.group);
-              return () => {};
+              animatorRef.current = s.animate;
             }}
+            animate={(_, t, dt) => animatorRef.current?.(t, dt)}
             autoRotate={motion === "gas"}
           />
           <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2">

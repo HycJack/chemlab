@@ -18,8 +18,8 @@ export interface ThreeBuildContext {
 export interface ThreeViewportProps {
   /** 构建模型。返回一个可选清理函数。 */
   build?: (ctx: ThreeBuildContext) => void | (() => void);
-  /** 每帧动画（t 为累计秒） */
-  animate?: (ctx: ThreeBuildContext, t: number) => void;
+  /** 每帧动画（t 为累计秒，dt 为与上一帧的间隔秒） */
+  animate?: (ctx: ThreeBuildContext, t: number, dt: number) => void;
   /** WebGL 不可用时的降级内容 */
   fallback?: React.ReactNode;
   className?: string;
@@ -38,6 +38,9 @@ export interface ThreeViewportProps {
  * - 自动创建渲染器 / 相机 / 环境光 / 轨道控制
  * - WebGL 不可用时降级为 fallback
  * - 组件卸载时释放全部资源
+ *
+ * 注意：场景只在挂载时构建一次（build 仅执行一次）。当模型内容随外部
+ * 状态变化时，调用方必须通过 key 传入新标识（如选中项 id）强制重建。
  */
 export function ThreeViewport({
   build,
@@ -53,18 +56,20 @@ export function ThreeViewport({
 }: ThreeViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [buildFailed, setBuildFailed] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     let renderer: THREE.WebGLRenderer;
+    // 本实例的环境贴图释放器（卸载时调用）
+    let envDisposers: (() => void) | undefined;
     try {
       renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
-        preserveDrawingBuffer: true,
       });
     } catch {
       setFailed(true);
@@ -102,6 +107,12 @@ export function ThreeViewport({
       const envScene = new RoomEnvironment();
       const envMap = pmrem.fromScene(envScene, 0.04).texture;
       scene.environment = envMap;
+      // 卸载时连同环境贴图一起释放，否则每次挂载都泄漏一份 GPU 资源。
+      envDisposers = () => {
+        envMap.dispose();
+        pmrem.dispose();
+        envScene.dispose();
+      };
     } catch {
       /* env 生成失败不影响主体渲染 */
     }
@@ -138,6 +149,7 @@ export function ThreeViewport({
       if (typeof result === "function") cleanup = result;
     } catch (e) {
       console.error("3D build failed", e);
+      setBuildFailed(true);
     }
 
     setReady(true);
@@ -154,7 +166,8 @@ export function ThreeViewport({
 
     renderer.setAnimationLoop((time) => {
       const t = time / 1000;
-      animate?.(ctx, t);
+      const dt = clock.getDelta();
+      animate?.(ctx, t, dt);
       controls.update();
       renderer.render(scene, camera);
     });
@@ -171,6 +184,8 @@ export function ThreeViewport({
         if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
         else if (mat) mat.dispose();
       });
+      envDisposers?.();
+      envDisposers = undefined;
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === host) {
@@ -185,6 +200,11 @@ export function ThreeViewport({
       {failed && (
         <div className="absolute inset-0 flex items-center justify-center">
           {fallback ?? <span className="text-sm text-muted-foreground">当前环境不支持 WebGL</span>}
+        </div>
+      )}
+      {buildFailed && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm text-muted-foreground">3D 模型加载失败</span>
         </div>
       )}
       {!ready && !failed && (

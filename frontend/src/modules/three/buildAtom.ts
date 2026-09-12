@@ -8,7 +8,7 @@ import type { ElementData } from "@/modules/data";
  */
 export function buildAtomScene(e: ElementData): {
   group: THREE.Group;
-  animate: (t: number, dt: number) => void;
+  animate: (t: number) => void;
 } {
   const group = new THREE.Group();
 
@@ -57,9 +57,10 @@ export function buildAtomScene(e: ElementData): {
     electrons: THREE.Mesh[];
     radius: number;
     count: number;
-    angle: number;
+    phase: number;
     speed: number;
     tilt: THREE.Vector3;
+    quat: THREE.Quaternion;
   }[] = [];
 
   shells.forEach((count, idx) => {
@@ -89,9 +90,10 @@ export function buildAtomScene(e: ElementData): {
       electrons,
       radius,
       count,
-      angle: i * 1.3,
+      phase: i * 1.3,
       speed: 1.1 + i * 0.3,
       tilt,
+      quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt.x, tilt.y, tilt.z)),
     });
   });
 
@@ -99,21 +101,24 @@ export function buildAtomScene(e: ElementData): {
   const center = box.getCenter(new THREE.Vector3());
   group.position.sub(center);
 
+  // 按绝对时间 t 把每个电子摆到轨道上的位置（幂等，可重复调用）
+  const pos = new THREE.Vector3();
+  const updateElectrons = (t: number) => {
+    for (const s of shellData) {
+      const angle = s.phase + t * s.speed;
+      for (let k = 0; k < s.count; k++) {
+        const theta = angle + (k * Math.PI * 2) / s.count;
+        pos.set(Math.cos(theta) * s.radius, 0, Math.sin(theta) * s.radius);
+        pos.applyQuaternion(s.quat);
+        s.electrons[k].position.copy(pos);
+      }
+    }
+  };
+  // 初始分布：不依赖 animate 被调用，模型一出现电子就位于正确轨道上。
+  updateElectrons(0);
+
   return {
     group,
-    animate: (t, dt) => {
-      for (const s of shellData) {
-        s.angle += dt * s.speed;
-        const quat = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(s.tilt.x, s.tilt.y, s.tilt.z)
-        );
-        for (let k = 0; k < s.count; k++) {
-          const theta = s.angle + (k * Math.PI * 2) / s.count;
-          const pos = new THREE.Vector3(Math.cos(theta) * s.radius, 0, Math.sin(theta) * s.radius);
-          pos.applyQuaternion(quat);
-          s.electrons[k].position.copy(pos);
-        }
-      }
-    },
+    animate: updateElectrons,
   };
 }

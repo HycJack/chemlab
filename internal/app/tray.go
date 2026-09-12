@@ -18,7 +18,7 @@ import (
 func SetupTrayAndShortcuts(state *State) {
 	app := state.app
 
-	name := "Skeleton"
+	name := "ChemLab"
 	if state.cfg != nil && state.cfg.AppName != "" {
 		name = state.cfg.AppName
 	}

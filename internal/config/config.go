@@ -33,14 +33,23 @@ type Config struct {
 	UpdateRepo string `json:"updateRepo"`
 }
 
+// homeSlug returns the app data root under the user's home directory. If the
+// home directory cannot be determined it falls back to a relative path so the
+// app still boots instead of writing to "".
+func homeSlug() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ".chemlab"
+	}
+	return filepath.Join(home, ".chemlab")
+}
+
 // Default returns the default configuration rooted in the user's home
 // directory.
 func Default() *Config {
-	home, _ := os.UserHomeDir()
-	base := filepath.Join(home, ".chemlab")
 	return &Config{
 		AppName:  "初中化学·教学助手",
-		DataDir:  base,
+		DataDir:  homeSlug(),
 		LogLevel: "info",
 		// Empty by default: auto-update is opt-in until the user sets a real
 		// "owner/repo" in config.json. Prevents the app from hitting GitHub
@@ -65,7 +74,8 @@ func Load(path string) (*Config, error) {
 	return c, nil
 }
 
-// Save writes the config to disk.
+// Save writes the config to disk atomically (temp file + rename) so a crash
+// mid-write never leaves a truncated config behind.
 func (c *Config) Save(path string) error {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
@@ -74,7 +84,11 @@ func (c *Config) Save(path string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // EnsureDirs creates all configured directories.
@@ -84,8 +98,7 @@ func (c *Config) EnsureDirs() error {
 
 // DefaultPath returns the standard on-disk location of the config file.
 func DefaultPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".chemlab", "config.json")
+	return filepath.Join(homeSlug(), "config.json")
 }
 
 // HTTPClient builds an *http.Client that routes through the configured proxy

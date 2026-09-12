@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import {
   ELEMENTS,
@@ -34,10 +34,9 @@ function matchQuery(e: ElementData, q: string): boolean {
   if (!s) return false;
   return (
     e.sym.toLowerCase() === s ||
-    e.name.includes(q) ||
-    String(e.n) === s ||
     e.sym.toLowerCase().includes(s) ||
-    e.name.includes(q)
+    e.name.includes(q) ||
+    String(e.n) === s
   );
 }
 
@@ -104,8 +103,7 @@ function TableGrid({ query, onOpen }: { query: string; onOpen: (e: ElementData) 
   );
   for (const e of ELEMENTS) {
     const { row, col } = gridPosition(e);
-    if (row <= 7) cells[row][col] = e;
-    else cells[row][col] = e; // 镧系/锕系行
+    cells[row][col] = e;
   }
   // 主表 group3 占位
   cells[6][3] = { n: 57, label: "57–71" };
@@ -190,6 +188,8 @@ function TableGrid({ query, onOpen }: { query: string; onOpen: (e: ElementData) 
 function AtomDetail({ element, onBack }: { element: ElementData; onBack: () => void }) {
   const neutrons = Math.max(Math.round(element.mass) - element.n, 0);
   const configText = formatConfig(element.config);
+  // buildAtomScene 的电子轨道动画：viewport 每帧回调时驱动（见 animate=）。
+  const animatorRef = useRef<((t: number) => void) | null>(null);
 
   return (
     <div className="space-y-4">
@@ -236,11 +236,15 @@ function AtomDetail({ element, onBack }: { element: ElementData; onBack: () => v
           <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-card/70 to-muted/30 p-1">
             <div className="relative h-[300px] overflow-hidden rounded-xl">
               <ThreeViewport
+                key={element.n}
                 className="h-full w-full"
                 cameraPos={[3.6, 2.2, 3.8]}
                 build={({ group }) => {
-                  group.add(buildAtomScene(element).group);
+                  const scene = buildAtomScene(element);
+                  group.add(scene.group);
+                  animatorRef.current = scene.animate;
                 }}
+                animate={(_, t) => animatorRef.current?.(t)}
               />
               <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2">
                 <TagChip color="#3b82f6">ATOMIC STRUCTURE</TagChip>

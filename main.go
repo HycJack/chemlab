@@ -23,7 +23,9 @@ func main() {
 	if cfg == nil {
 		cfg = config.Default()
 	}
-	_ = cfg.EnsureDirs()
+	if err := cfg.EnsureDirs(); err != nil {
+		log.Printf("warning: failed to create data dirs: %v", err)
+	}
 
 	// Initialise the dual-writer (stderr + rotating file) logger before
 	// anything else so early startup messages are captured.
@@ -39,7 +41,6 @@ func main() {
 		Services: []application.Service{
 			// Register each bound service here. The frontend calls their
 			// exported methods through the generated bindings.
-			application.NewService(app.NewGreeterService(state)),
 			// Persists the frontend's preferences (theme, general settings, …)
 			// as a JSON bag in the app data dir.
 			application.NewService(app.NewSettingsService(state)),
@@ -49,8 +50,6 @@ func main() {
 			application.NewService(app.NewUpdateService(state)),
 			// Cross-platform "launch at login" control.
 			application.NewService(app.NewAutostartService(state)),
-			// Recursive file search with directory / file-type filtering.
-			application.NewService(app.NewSearchService(state)),
 		},
 		// Single instance: a second launch brings the existing window to the
 		// front instead of starting a new process.
@@ -99,7 +98,10 @@ func main() {
 	// System tray + menu + global shortcuts.
 	app.SetupTrayAndShortcuts(state)
 
-	if err := wailsApp.Run(); err != nil {
+	err = wailsApp.Run()
+	// Flush and close the rotating log file before exiting.
+	logger.Close()
+	if err != nil {
 		log.Fatal(err)
 	}
 }

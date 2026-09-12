@@ -12,8 +12,6 @@ export type Preferences = {
   themeId: string;
   /** UI zoom level, e.g. 1.0 === 100%. */
   zoomLevel: number;
-  /** Show dot-prefixed files in the (future) file explorer. */
-  showHidden: boolean;
   /** Open automatically at login. */
   launchAtLogin: boolean;
 };
@@ -22,7 +20,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   theme: "system",
   themeId: DEFAULT_THEME_ID,
   zoomLevel: 1,
-  showHidden: false,
   launchAtLogin: false,
 };
 
@@ -33,7 +30,6 @@ export async function loadPreferences(): Promise<Preferences> {
     theme: (p.theme || DEFAULT_PREFERENCES.theme) as ThemePref,
     themeId: p.themeId || DEFAULT_PREFERENCES.themeId,
     zoomLevel: p.zoomLevel || DEFAULT_PREFERENCES.zoomLevel,
-    showHidden: p.showHidden ?? DEFAULT_PREFERENCES.showHidden,
     launchAtLogin: p.launchAtLogin ?? DEFAULT_PREFERENCES.launchAtLogin,
   };
 }
@@ -45,7 +41,6 @@ type PreferencesStore = Preferences & {
   setTheme: (v: ThemePref) => void;
   setThemeId: (v: string) => void;
   setZoomLevel: (v: number) => void;
-  setShowHidden: (v: boolean) => void;
   setLaunchAtLogin: (v: boolean) => void;
 };
 
@@ -84,7 +79,6 @@ function toModel(prefs: Preferences): PreferencesModel {
     theme: prefs.theme,
     themeId: prefs.themeId,
     zoomLevel: prefs.zoomLevel,
-    showHidden: prefs.showHidden,
     launchAtLogin: prefs.launchAtLogin,
   });
 }
@@ -145,10 +139,6 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
   },
   setZoomLevel: (zoomLevel) => {
     set({ zoomLevel });
-    schedulePersist(get());
-  },
-  setShowHidden: (showHidden) => {
-    set({ showHidden });
     schedulePersist(get());
   },
   setLaunchAtLogin: (launchAtLogin) => {

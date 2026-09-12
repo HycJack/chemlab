@@ -20,7 +20,12 @@ export function WindowControls() {
 
   useEffect(() => {
     if (isMac) return;
-    Window.IsMaximised?.().then(setMaximised).catch(() => {});
+    const sync = () => Window.IsMaximised?.().then(setMaximised).catch(() => {});
+    sync();
+    // 标题栏双击最大化 / 拖拽到屏幕边缘还原都由系统处理，监听窗口
+    // resize 事件让按钮图标与实际状态保持一致。
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
   }, []);
 
   if (isMac) return null;

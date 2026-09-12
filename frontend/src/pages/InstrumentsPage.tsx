@@ -130,6 +130,7 @@ function InstrumentDetail({ instrument }: { instrument: Instrument }) {
           <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-card/70 to-muted/30 p-1">
             <div className="relative h-[300px] overflow-hidden rounded-xl">
               <ThreeViewport
+                key={instrument.id}
                 className="h-full w-full"
                 cameraPos={[2.6, 1.8, 3.2]}
                 build={({ group }) => {

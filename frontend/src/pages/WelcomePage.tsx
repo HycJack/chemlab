@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FlaskConical, TestTubes, Orbit, Flame, BookOpen, ShieldCheck, ArrowRight } from "lucide-react";
+import { FlaskConical, TestTubes, Orbit, Flame, ShieldCheck, ArrowRight } from "lucide-react";
 import { MODULE_COUNTS } from "@/modules/data";
 
 export interface TeacherInfo {
@@ -171,14 +171,10 @@ export default function WelcomePage({ onEnter }: { onEnter: (info: TeacherInfo) 
               </div>
 
               <div className="border-t border-border/40 bg-muted/30 px-6 py-3.5 text-[10.5px] leading-relaxed text-muted-foreground/80">
-                数据隐私：用户附件、2024 人教版九年级化学全上下册、义务教育化学课程标准（2022 年版）。
+                数据隐私：教师登录信息仅保存在本机，不上传任何信息。数据依据 2024
+                人教版九年级化学全上下册与《义务教育化学课程标准（2022 年版）》。
               </div>
             </form>
-
-            <div className="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/70">
-              <BookOpen className="h-3.5 w-3.5" />
-              公众号 · 宏化学
-            </div>
           </div>
         </div>
       </div>

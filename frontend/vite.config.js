@@ -18,4 +18,14 @@ export default defineConfig({
     },
   },
   plugins: [react(), tailwindcss(), wails("./bindings")],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // three.js 体积大且变化不频繁，单独分包避免主 bundle 过大。
+          three: ["three"],
+        },
+      },
+    },
+  },
 });

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"chemlab/internal/version"
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	"github.com/wailsapp/wails/v3/pkg/updater/providers/github"
-	"chemlab/internal/version"
 )
 
 // UpdateService wraps the Wails3 updater for frontend consumption.
@@ -17,7 +17,12 @@ import (
 // emitted on the app's event bus and can be subscribed to directly.
 type UpdateService struct {
 	state *State
-	init  sync.Once
+
+	// Guards the lazy Init below. A plain mutex + success flag replaces
+	// sync.Once so that a failed init (bad repo config, transient error)
+	// can be retried on the next call instead of being cached forever.
+	mu       sync.Mutex
+	initDone bool
 }
 
 // NewUpdateService creates the update service.
@@ -73,34 +78,37 @@ func (s *UpdateService) disabled() bool {
 	return v == "" || v == "dev" || v == "unknown" || s.state.cfg.UpdateRepo == ""
 }
 
-// ensureInit lazily configures the updater exactly once. The repo owner and
-// name come from config.json (UpdateRepo). sync.Once makes concurrent calls
-// from the frontend safe — only the first one performs the Init.
+// ensureInit lazily configures the updater exactly once (on success). The
+// repo owner and name come from config.json (UpdateRepo). The mutex makes
+// concurrent calls from the frontend safe; a failed Init is NOT cached, so
+// the next call retries instead of silently reporting success.
 func (s *UpdateService) ensureInit() error {
 	if s.disabled() {
 		return fmt.Errorf("updater: disabled in this build")
 	}
 	// Resolve the updater handle up front; a State whose app was never set
-	// must surface a clear error instead of nil-deref panicking the Once body.
+	// must surface a clear error instead of nil-deref panicking later.
 	if s.state.app == nil || s.state.app.Updater == nil {
 		return fmt.Errorf("updater: not available on this platform")
 	}
-	var err error
-	s.init.Do(func() {
-		provider, perr := github.New(github.Config{
-			Repository: s.state.cfg.UpdateRepo,
-		})
-		if perr != nil {
-			err = fmt.Errorf("updater: create github provider: %w", perr)
-			return
-		}
-		if ierr := s.state.app.Updater.Init(updater.Config{
-			CurrentVersion: version.Version,
-			Providers:      []updater.Provider{provider},
-			CheckInterval:  24 * time.Hour, // daily background check
-		}); ierr != nil {
-			err = fmt.Errorf("updater: init: %w", ierr)
-		}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.initDone {
+		return nil
+	}
+	provider, err := github.New(github.Config{
+		Repository: s.state.cfg.UpdateRepo,
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("updater: create github provider: %w", err)
+	}
+	if err := s.state.app.Updater.Init(updater.Config{
+		CurrentVersion: version.Version,
+		Providers:      []updater.Provider{provider},
+		CheckInterval:  24 * time.Hour, // daily background check
+	}); err != nil {
+		return fmt.Errorf("updater: init: %w", err)
+	}
+	s.initDone = true
+	return nil
 }
