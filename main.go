@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -75,9 +76,11 @@ func main() {
 		Title:  cfg.AppName,
 		Width:  1280,
 		Height: 820,
-		// Frameless on every platform: the in-app <header> (with the
+		// Frameless on Windows/Linux: the in-app <header> (with the
 		// app-region: drag CSS) becomes the title bar.
-		Frameless: true,
+		// On macOS, Frameless must be false so native traffic lights are shown;
+		// MacTitleBarHiddenInset handles the hidden-title-bar look.
+		Frameless: runtime.GOOS != "darwin",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
